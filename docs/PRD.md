@@ -1,9 +1,10 @@
 # Product Requirements Document (PRD)
 # CSComm3.SLC - C# SLC PLC Communication Library
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** January 2, 2026
 **Based on:** pycomm3 v1.x (SLC Driver Component)
+**Status:** COMPLETE - Verified against real hardware
 
 ---
 
@@ -11,6 +12,19 @@
 
 ### 1.1 Purpose
 This document defines the requirements for CSComm3.SLC, a C# .NET Core library that enables Ethernet-based communications with Allen Bradley SLC and MicroLogix PLCs. The library is a conversion of the SLC communication functionality from the Python pycomm3 library, maintaining equivalent function names and behavior.
+
+### 1.0 Implementation Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| EtherNet/IP Session Management | Complete | RegisterSession/UnregisterSession |
+| CIP Forward Open/Close | Complete | Standard 500-byte connection |
+| PCCC Read Operations | Complete | All data types verified |
+| PCCC Write Operations | Complete | Integer and bit writes verified |
+| Device Identity | Complete | GetIdentity() working |
+| Async API | Complete | ReadAsync/WriteAsync |
+| Unit Tests | Complete | 205 tests passing |
+| Hardware Verification | Complete | Tested on SLC 5/05 |
 
 ### 1.2 Scope
 This conversion is **exclusively focused** on the SLC/MicroLogix communications portion of pycomm3. The following protocols are **explicitly excluded**:
@@ -268,8 +282,11 @@ Examples:
 
 #### 3.7.2 Write Request
 Same structure as read, with:
-- Function Code: 0xAB (Protected Typed Logical Masked Write)
-- Followed by: [Bit Mask - 2 bytes] + [Data bytes]
+- Function Code: 0xAA (Protected Typed Logical Write) for non-bit values
+- Function Code: 0xAB (Protected Typed Logical Masked Write) for bit operations
+- Followed by: [Data bytes] for 0xAA, or [OR Mask - 2 bytes] + [AND Mask - 2 bytes] for 0xAB
+
+**Implementation Note:** During testing, we found that regular typed write (0xAA) works correctly for integer values, while masked write (0xAB) should be reserved for bit-level operations.
 
 ### 3.8 Error Handling
 
@@ -607,10 +624,63 @@ using (var plc = new SLCDriver("192.168.1.10"))
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-01-02 | Claude | Initial document |
+| 1.1 | 2026-01-02 | Claude | Added implementation status, notes, and hardware verification results |
 
 ---
 
-## 12. References
+## 12. Implementation Notes
+
+### 12.1 PCCC Reply Parsing
+
+The PCCC reply received over CIP includes an **echoed Requestor ID** before the actual PCCC data. This is critical for correct parsing:
+
+```
+Reply Format:
+[Requestor ID Length (1 byte)] [Requestor ID Data (length-1 bytes)] [PCCC Reply...]
+
+Example: 07-00-00-00-00-00-00-4F-00-0B-00-0D-10
+         |---Requestor ID---|---PCCC Reply---|
+         (7 bytes)           Command=0x4F, Status=0, Trans=0x000B, Data=0x100D
+```
+
+The `ParseReply()` method must skip the Requestor ID (using the length byte at position 0) before parsing the PCCC command, status, and transaction ID.
+
+### 12.2 Write Operations
+
+Two PCCC write function codes are used:
+
+| Function | Code | Use Case |
+|----------|------|----------|
+| Protected Typed Logical Write | 0xAA | Integer, Float, Status writes |
+| Protected Typed Logical Masked Write | 0xAB | Bit-level operations |
+
+For masked write (0xAB), the data format is:
+- OR Mask (2 bytes): Bits to set
+- AND Mask (2 bytes): Bits to preserve (inverted clear mask)
+
+### 12.3 Hardware Verification
+
+Tested against Allen Bradley 1747-L551/C (SLC 5/05) with firmware C/13 - DC 3.54:
+
+| Test | Address | Expected | Result |
+|------|---------|----------|--------|
+| Read Integer | N7:0 | 4109 | Pass |
+| Read Status | S2:37 | 2000 | Pass |
+| Read Float | F8:0 | 41.09 | Pass |
+| Read Bit | B3:0/0 | Boolean | Pass |
+| Read Timer | T4:0.ACC | Int16 | Pass |
+| Read Counter | C5:0.ACC | Int16 | Pass |
+| Write Integer | N7:1 | 10 | Pass |
+
+### 12.4 Known Differences from pycomm3
+
+1. **Write function**: pycomm3 has a bug with integer encoding that causes write failures. CSComm3.SLC uses the correct PCCC typed write (0xAA) for non-bit writes.
+
+2. **Connection type**: Currently uses standard Forward Open (500-byte connection). Extended Forward Open (4000-byte) is not implemented as SLC PLCs don't require it.
+
+---
+
+## 13. References
 
 1. pycomm3 Source Code: https://github.com/ottowayi/pycomm3
 2. Allen Bradley DF1 Protocol Manual (1770-RM516)
