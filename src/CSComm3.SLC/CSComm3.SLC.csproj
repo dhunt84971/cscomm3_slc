@@ -1,0 +1,55 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;netstandard2.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CSComm3.SLC</RootNamespace>
+    <AssemblyName>CSComm3.SLC</AssemblyName>
+
+    <!-- Package Information -->
+    <PackageId>CSComm3.SLC</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>CSComm3 Contributors</Authors>
+    <Company>CSComm3</Company>
+    <Product>CSComm3.SLC</Product>
+    <Description>C# library for Ethernet-based communications with Allen Bradley SLC and MicroLogix PLCs. A port of pycomm3's SLC driver functionality.</Description>
+    <PackageTags>allen-bradley;slc;micrologix;plc;ethernet-ip;cip;pccc;industrial;automation</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/cscomm3/cscomm3-slc</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/cscomm3/cscomm3-slc</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
+    <!-- Build Settings -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <!-- Allow test project to access internal members -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="CSComm3.SLC.Tests" />
+  </ItemGroup>
+
+  <!-- Conditional settings for .NET Standard 2.0 -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <Nullable>annotations</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="System.Memory" Version="4.5.5" Condition="'$(TargetFramework)' == 'netstandard2.0'" />
+  </ItemGroup>
+
+  <!-- Source Link for debugging -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
